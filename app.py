@@ -17,27 +17,7 @@ st.set_page_config(page_title="溫室環境決策系統 V7.0 (MVC版)", page_ico
 import streamlit as st
 import pandas as pd
 
-# --- 2. 讀取資料的函數 (加上 @st.cache_data) ---
-# 這個裝飾器告訴 Streamlit：
-# "如果 data 還沒下載過，就跑一次這段程式並存起來；下次再跑，直接用存好的，不要重新下載。"
-@st.cache_data
-def load_data_from_drive():
-    # 這裡填入您的 Google Drive 檔案 ID
-    # 假設您的分享連結是 https://drive.google.com/file/d/123456789abc/view
-    # ID 就是 '123456789abc'
-    file_id = '1s15JRKxTKao7CIcqpEk8xcN7WxdvP0Yi?usp=drive_link' 
-    
-    url = f'https://drive.google.com/drive/folders/1s15JRKxTKao7CIcqpEk8xcN7WxdvP0Yi?usp=drive_link'
-    
-    try:
-        df = pd.read_csv(url)
-        return df
-    except Exception as e:
-        st.error(f"讀取資料失敗: {e}")
-        return None
 
-# --- 3. 在主程式中呼叫 ---
-st.title("溫室環境決策系統 V5.9")
 
 # 呼叫函數讀取資料
 df = load_data_from_drive()
@@ -663,3 +643,4 @@ with tab4:
         else:
 
             st.info("👈 請調整左側成本參數，並點擊按鈕開始分析。")
+
