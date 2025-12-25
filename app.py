@@ -51,7 +51,7 @@ if 'annual_cycles' not in st.session_state: st.session_state.annual_cycles = 15.
 # 標題區
 c1, c2 = st.columns([1, 4])
 with c1: st.image("https://cdn-icons-png.flaticon.com/512/2942/2942544.png", width=80)
-with c2: st.title("溫室模擬與環境分析系統 V7.0"); st.markdown("模組化架構：Backend Services")
+with c2: st.title("溫室模擬與環境分析系統 V7.0"); st.markdown("20251222版")
 
 # 側邊欄：地區選擇
 with st.sidebar:
@@ -91,10 +91,10 @@ with tab1:
     with col1:
         st.markdown("##### 全年氣候趨勢圖")
         fig = make_subplots(specs=[[{"secondary_y": True}]])
-        fig.add_trace(go.Bar(x=df_clim['Month'], y=df_clim['Temp'], name="平均氣溫", marker_color='orange', opacity=0.6), secondary_y=False)
+        fig.add_trace(go.Bar(x=df_clim['Month'], y=df_clim['Solar_W'], name="日射量 (W/m²)", marker_color='orange', opacity=0.6), secondary_y=False)
         fig.add_trace(go.Scatter(x=df_clim['Month'], y=df_clim['MaxTemp'], name="最高溫", line=dict(color='#ef4444', dash='dot', width=1)), secondary_y=False)
         fig.add_trace(go.Scatter(x=df_clim['Month'], y=df_clim['MinTemp'], name="最低溫", line=dict(color='#3b82f6', dash='dot', width=1)), secondary_y=False)
-        fig.add_trace(go.Scatter(x=df_clim['Month'], y=df_clim['Solar_W'], name="日射量 (W/m²)", line=dict(color='#f59e0b', width=3)), secondary_y=True)
+        fig.add_trace(go.Scatter(x=df_clim['Month'], y=df_clim['Temp'], name="平均氣溫", line=dict(color='#f59e0b', width=3)), secondary_y=True)
         
         fig.update_layout(
             height=450, 
@@ -627,3 +627,4 @@ with tab4:
                 st.dataframe(df_opt.style.format("{:,.0f}"))
         else:
             st.info("👈 請調整左側成本參數，並點擊按鈕開始分析。")
+
