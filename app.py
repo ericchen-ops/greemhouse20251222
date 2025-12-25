@@ -55,33 +55,29 @@ with c2: st.title("溫室模擬與環境分析系統 V7.0"); st.markdown("202512
 with st.sidebar:
     st.header("基礎設定")
     
-    # 1. 先將所有選項取出來變成一個 List (這樣才能查位置)
     loc_options = list(WEATHER_DB.keys())
 
-    # 2. 指定你想要預設的那個 Key (必須跟 WEATHER_DB 裡的 Key 完全一樣)
-    # 例如：假設你想要預設選「臺中」，你需要填入它對應的 key (可能是檔名或代號)
-    # 請將 'Taichung_Station' 替換成你實際想預設的那個 Key 字串
-    default_key = 'Taichung_Station' 
+    # 2. 指定預設氣象站
+    default_key = '12Q970_東港工作站' 
 
     # 3. 判斷預設值在清單中的位置
     if default_key in loc_options:
         default_index = loc_options.index(default_key)
     else:
-        default_index = 0  # 如果打錯字或找不到，就預設選第一個
+        default_index = 0  
     
     # 4. 加入 index 參數
     loc_id = st.selectbox(
         "選擇模擬地區", 
         loc_options, 
         format_func=lambda x: WEATHER_DB[x]['name'],
-        index=default_index  # <--- 關鍵在這行
+        index=default_index  
     )
     
     CURR_LOC = WEATHER_DB[loc_id]
     st.caption(CURR_LOC.get('description', ''))
 
-    st.write(list(WEATHER_DB.keys()))
-    
+       
     # 載入該地區價格
     if 'market_prices' not in st.session_state: st.session_state.market_prices = CURR_LOC['data']['marketPrice'].copy()
 
@@ -691,6 +687,7 @@ with tab4:
                 st.dataframe(df_opt.style.format("{:,.0f}"))
         else:
             st.info("👈 請調整左側成本參數，並點擊按鈕開始分析。")
+
 
 
 
