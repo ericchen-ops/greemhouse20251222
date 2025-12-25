@@ -32,6 +32,36 @@ CROP_DB = resource_svc.load_crop_database()
 WEATHER_DB = climate_svc.scan_and_load_weather_data()
 MARKET_DB = market_svc.scan_and_load_market_prices()
 
+
+# [新增] 讀取外部座標 CSV 並合併到 WEATHER_DB
+gps_file_path = 'data/station_coords.csv'
+
+# 檢查檔案是否存在
+if os.path.exists(gps_file_path):
+    try:
+        # 1. 讀取 CSV
+        df_gps = pd.read_csv(gps_file_path)
+        
+        # 2. 轉成字典方便查詢 (StationName 當作 Key)
+        gps_dict = df_gps.set_index('StationName').to_dict('index')
+
+        # 3. 把座標塞進 WEATHER_DB
+        count_matched = 0
+        for key in WEATHER_DB.keys():
+            # 模糊比對：只要 CSV 的名稱包含在 key 裡面 (例如 "K2F750" 在 "K2F750_種苗繁殖場.csv" 裡)
+            for gps_name, coords in gps_dict.items():
+                if gps_name in key: 
+                    WEATHER_DB[key]['lat'] = coords['Lat']
+                    WEATHER_DB[key]['lon'] = coords['Lon']
+                    count_matched += 1
+                    break # 找到就換下一個
+        
+        # 開發階段可以打開下面這行檢查有沒有成功載入
+        # print(f"✅ 已成功載入 {count_matched} 筆氣象站座標")
+
+    except Exception as e:
+        st.error(f"⚠️ 座標檔讀取錯誤: {e}")
+
 # 載入設備庫 (呼叫 ResourceService)
 FAN_DB = resource_svc.load_equipment_csv('equipment_data', 'greenhouse_fans.csv', 'fan')
 CIRC_DB = resource_svc.load_equipment_csv('equipment_data', 'greenhouse_fans.csv', 'fan', 'Category', 'Circulation')
@@ -735,6 +765,7 @@ with tab4:
                 st.dataframe(df_opt.style.format("{:,.0f}"))
         else:
             st.info("👈 請調整左側成本參數，並點擊按鈕開始分析。")
+
 
 
 
