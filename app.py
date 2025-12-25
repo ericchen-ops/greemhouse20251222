@@ -85,7 +85,7 @@ with tab1:
     # 2. 版面配置
     col1, col2 = st.columns([1, 1.5]) 
     
-   with col1:
+with col1:
     st.markdown("##### 全年氣候趨勢圖")
     fig = make_subplots(specs=[[{"secondary_y": True}]])
 
@@ -153,7 +153,7 @@ with tab1:
     st.plotly_chart(fig, use_container_width=True)
        
     # --- 右側：氣溫與輻射量分布 ---
-    with col2:
+with col2:
         st.markdown("##### 氣溫與日射量分布 ")
         scatter_points = []
         np.random.seed(42)
@@ -667,6 +667,7 @@ with tab4:
                 st.dataframe(df_opt.style.format("{:,.0f}"))
         else:
             st.info("👈 請調整左側成本參數，並點擊按鈕開始分析。")
+
 
 
 
