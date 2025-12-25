@@ -481,21 +481,21 @@ with tab4:
         with st.container(border=True):
             # 1. 顯示排風扇 (如果不是正在分析它)
             if "Fans" not in target_sys:
-                st.markdown(f"**💨 排風扇數量:** `{fan_specs['exhaustCount']} 台`")
+                st.markdown(f"**排風扇數量:** `{fan_specs['exhaustCount']} 台`")
             
             # 2. 顯示遮蔭 (如果不是正在分析它)
             if "Shading" not in target_sys:
-                st.markdown(f"**☂️ 內遮蔭率:** `{gh_specs['shadingScreen']}%`")
+                st.markdown(f"**內遮蔭率:** `{gh_specs['shadingScreen']}%`")
             
             # 3. 顯示天窗 (如果不是正在分析它)
             if "Vents" not in target_sys:
-                st.markdown(f"**🪟 天窗面積:** `{gh_specs['roofVentArea']} m²`")
+                st.markdown(f"**天窗面積:** `{gh_specs['roofVentArea']} m²`")
             
             # 4. 顯示噴霧 (如果不是正在分析它)
             if "Fogging" not in target_sys:
                 # 這裡要小心 key 可能不存在
                 curr_fog = gh_specs.get('_fog_capacity', 0)
-                st.markdown(f"**💦 噴霧流量:** `{curr_fog} g/m²/hr`")
+                st.markdown(f"**噴霧系統:** `{curr_fog} g/m²/hr`")
                 
             # 5. 顯示結構基本資訊
             st.markdown("---")
@@ -550,5 +550,6 @@ with tab4:
             fig_opt.update_yaxes(title_text="金額 ($)", secondary_y=False); fig_opt.update_yaxes(title_text="產量 (kg)", secondary_y=True, showgrid=False)
             st.plotly_chart(fig_opt, use_container_width=True)
             with st.expander("查看詳細數據表"): st.dataframe(df_opt.style.format("{:,.0f}"))
+
 
 
