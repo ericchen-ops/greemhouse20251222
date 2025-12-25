@@ -5,6 +5,8 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import math
 import os
+import folium
+from streamlit_folium import st_folium
 
 # --- [關鍵修改] 引用新的後端服務 ---
 from backend.services.climate_service import ClimateService
@@ -194,6 +196,52 @@ with tab1:
 
         fig2.update_layout(height=450, template="plotly_dark", xaxis_title="氣溫 (°C)", yaxis_title="日射強度 (W/m²)", legend=dict(orientation="v", y=1, x=1.02), margin=dict(l=20, r=20, t=50, b=20))
         st.plotly_chart(fig2, use_container_width=True)
+
+# --- [新增] 氣象站地圖顯示 ---
+    st.markdown("---")
+    st.subheader("🗺️ 氣象站地理位置分佈")
+    
+    with st.expander("點擊展開地圖", expanded=True):
+        # 1. 整理地圖資料 (將 Dictionary 轉為 List)
+        map_data = []
+        for key, value in WEATHER_DB.items():
+            # 防呆：嘗試抓取經緯度，若無則給預設值或跳過
+            # 假設你的資料庫 key 是 'lat'/'lon' 或 'latitude'/'longitude'
+            lat = value.get('lat') or value.get('latitude')
+            lon = value.get('lon') or value.get('longitude')
+            
+            # 如果是 Demo 資料或沒經緯度，給個預設值 (例如設在台灣中心) 以免報錯
+            if lat is None: lat = 23.973875
+            if lon is None: lon = 120.982024
+            
+            map_data.append({
+                "name": value.get('name', key),
+                "lat": float(lat),
+                "lon": float(lon),
+                "desc": value.get('description', '無描述')
+            })
+            
+        df_map = pd.DataFrame(map_data)
+
+        # 2. 建立地圖 (中心點設為台灣)
+        m = folium.Map(location=[23.7, 121.0], zoom_start=7)
+
+        # 3. 將每個氣象站標記在地圖上
+        for _, row in df_map.iterrows():
+            # 設定不同顏色的圖標：如果是當前選擇的測站，用紅色；其他用綠色
+            is_current = (row['name'] == CURR_LOC['name'])
+            icon_color = 'red' if is_current else 'green'
+            icon_type = 'star' if is_current else 'leaf'
+            
+            folium.Marker(
+                location=[row['lat'], row['lon']],
+                popup=f"<b>{row['name']}</b><br>{row['desc']}",
+                tooltip=row['name'],
+                icon=folium.Icon(color=icon_color, icon=icon_type)
+            ).add_to(m)
+
+        # 4. 顯示地圖
+        st_folium(m, width=1000, height=500, use_container_width=True)
 
 # --- Tab 2: 室內氣候 ---
 with tab2:
@@ -687,6 +735,7 @@ with tab4:
                 st.dataframe(df_opt.style.format("{:,.0f}"))
         else:
             st.info("👈 請調整左側成本參數，並點擊按鈕開始分析。")
+
 
 
 
