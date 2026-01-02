@@ -20,18 +20,26 @@ class PsychroModel:
         return 0.001
 
     def get_partial_vapor_pressure(self, t_c, rh_percent):
+        """實際水氣壓 Pw (kPa)"""
         return self.get_saturation_vapor_pressure(t_c) * (rh_percent / 100.0)
 
     def get_vpd(self, t_c, rh_percent):
+        """飽差 VPD (kPa)"""
         pws = self.get_saturation_vapor_pressure(t_c)
         pw = pws * (rh_percent / 100.0)
         return pws - pw
 
     def get_dew_point(self, pw_kpa):
         """[ASAE 1999] 露點溫度"""
+        # [防呆修正] 避免 log(0) 或負數
+        if pw_kpa <= 0: return -999
+        
         c = 0.00145
-        try: tmpV = math.log(c * pw_kpa * 1000)
+        try: 
+            # 保留您原本的數學寫法
+            tmpV = math.log(c * pw_kpa * 1000)
         except: return -999
+        
         A0, A1, A2 = 19.5322, 13.6626, 1.17678
         T_val = A0 + A1*tmpV + A2*(tmpV**2)
         return T_val - 273.15
@@ -42,4 +50,6 @@ class PsychroModel:
 
     def get_humidity_ratio(self, pw_kpa):
         """絕對濕度 kg/kg"""
+        # [防呆修正] 防止分母為 0
+        if self.P_atm <= pw_kpa: return 0.0
         return 0.62198 * pw_kpa / (self.P_atm - pw_kpa)

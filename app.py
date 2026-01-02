@@ -7,6 +7,11 @@ import math
 import os
 import folium
 from streamlit_folium import st_folium
+import sys 
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.append(current_dir)
 
 # --- 引用後端服務 ---
 from backend.services.climate_service import ClimateService
@@ -14,16 +19,15 @@ from backend.services.resource_service import ResourceService
 from backend.services.market_service import MarketService
 from backend.services.simulation_service import SimulationService
 
-# --- 設定頁面 ---
-st.set_page_config(page_title="溫室環境決策系統 V7.1", page_icon="🌿", layout="wide")
-
 # ==========================================
-# 1. 系統初始化 (實例化服務並讀取資料)
+# 1. 系統初始化 (實例化服務)
 # ==========================================
 climate_svc = ClimateService(base_folder='data/weather_data')
 resource_svc = ResourceService(data_root='data')
 market_svc = MarketService(base_folder='data/market_data')
 
+# [新增] 實例化模擬服務
+sim_svc = SimulationService()
 # 透過服務載入資料
 CROP_DB = resource_svc.load_crop_database()
 WEATHER_DB = climate_svc.scan_and_load_weather_data()
@@ -238,7 +242,8 @@ with tab2:
     fan_specs = {'exhaustCount': f_count, 'exhaustFlow': f_flow, 'circCount': c_count, 'circDistance': 15}
     st.session_state.gh_specs = gh_specs; st.session_state.fan_specs = fan_specs
 
-    res = SimulationService.run_simulation(
+
+    res = sim_svc.run_simulation(
         gh_specs, fan_specs, CURR_LOC['data'], 
         st.session_state.monthly_crops, st.session_state.planting_density, 
         st.session_state.annual_cycles, st.session_state.market_prices,
@@ -382,7 +387,7 @@ with tab3:
                 st.rerun()
 
     with c2:
-        res_eco = SimulationService.run_simulation(
+        res_eco = sim_svc.run_simulation(
             st.session_state.gh_specs, st.session_state.fan_specs, CURR_LOC['data'], 
             st.session_state.monthly_crops, st.session_state.planting_density, 
             st.session_state.annual_cycles, st.session_state.market_prices, CROP_DB, MAT_DB
@@ -527,7 +532,8 @@ with tab4:
                         cost_elec = (val * floor_area * 0.005) * run_hours * elec_rate / 1000 
                         cost_total = cost_water + cost_elec + (val * sys_price)
 
-                    sim_res = SimulationService.run_simulation(
+                    
+                    sim_res = sim_svc.run_simulation(
                         tmp_gh, tmp_fan, CURR_LOC['data'], 
                         st.session_state.monthly_crops, st.session_state.planting_density, 
                         st.session_state.annual_cycles, st.session_state.market_prices, CROP_DB, MAT_DB
