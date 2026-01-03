@@ -179,82 +179,132 @@ with tab1:
         st_folium(m, width=1000, height=500, use_container_width=True, returned_objects=[])
 
 
+    # ... (Tab 1 前半部不變) ...
+
     st.markdown("---")
-    st.subheader("☀️ 進階光環境與 DLI 分析 (原始數據版)")
+    st.subheader(f"☀️ {CURR_LOC['name']} - 光環境適性分析 (月均值版)")
     
-    # 1. 控制面板 (UI)
-    c_set1, c_set2 = st.columns([1, 2])
+    # 1. 尋找檔案邏輯 (保持不變)
+    current_id = str(CURR_LOC['id'])
+    target_filename = None
+    weather_folder = 'data/weather_data'
+    if os.path.exists(weather_folder):
+        for f in os.listdir(weather_folder):
+            if current_id in f and f.endswith('.csv'):
+                target_filename = f; break
     
-    with c_set1:
-        st.markdown("#### ⚙️ 模擬參數")
-        env_mode = st.radio("觀測情境", ["室外 (Outdoor)", "室內 (Indoor)"], horizontal=True)
+    if target_filename:
+        # 2. 設定面板
+        c_set1, c_set2 = st.columns([1, 2])
         
-        # UI 邏輯
-        trans_rate = 100
-        if env_mode == "室內 (Indoor)":
-            trans_rate = st.slider("溫室透光率 (%)", 10, 100, 50, step=5)
+        # --- 讀取作物資料 ---.
+
+        # --- 讀取作物資料 ---
+        
+        crop_data = climate_svc.get_crop_light_requirements()
+        
+        with c_set1:
+            st.markdown("#### ⚙️ 栽培設定")
             
-    with c_set2:
-        st.markdown("#### 📊 視覺化指標")
-        metric = st.selectbox("選擇顯示數據", [
-            "PPFD (光合作用光量子通量)", 
-            "DLI (日累積光量)", 
-            "輻射量 (Wh/m²)", 
-            "輻射量 (MJ/m²)"
-        ])
-
-    # 2. 呼叫後端服務 (Logic & Calculation)
-    # 前端完全不碰 pd.read_csv 或數學公式
-    target_csv = "12Q970_東港工作站.csv"
-    df_adv = climate_svc.analyze_advanced_light(target_csv, transmittance_percent=trans_rate)
-
-    # 3. 繪圖 (View)
-    if df_adv is not None and not df_adv.empty:
-        
-        # 決定要畫哪個欄位 (Mapping)
-        # 這些欄位名稱都已經在 Backend 生成好了
-        plot_config = {
-            "PPFD": {"col": "Val_PPFD", "unit": "μmol/m²/s", "color": "Greens"},
-            "Wh":   {"col": "Val_Wh",   "unit": "Wh/m²",       "color": "Oranges"},
-            "MJ":   {"col": "Val_MJ",   "unit": "MJ/m²",       "color": "YlOrRd"},
-            "DLI":  {"col": "Val_DLI_Hr", "unit": "mol/m²/hr", "color": "Teal"}
-        }
-        
-        # 簡單的關鍵字比對來決定 config
-        curr_cfg = plot_config["MJ"] # 預設
-        for k in plot_config:
-            if k in metric: curr_cfg = plot_config[k]; break
+            # 選單會自動列出 CSV 裡所有的 Crop_Name
+            sel_crop = st.selectbox("目標作物", list(crop_data.keys()))
             
-        target_col = curr_cfg["col"]
-        unit = curr_cfg["unit"]
-        
-        # --- [圖表 A] DLI 日總量 Bar Chart ---
-        if "DLI" in metric or "PPFD" in metric:
-            # 即使是 Groupby 加總，嚴格來說也可以放在 Backend 做
-            # 但這裡屬於「視覺化聚合」，在前端做尚可接受
-            df_daily = df_adv.groupby('Date')['Val_DLI_Hr'].sum().reset_index()
+            # 取得該作物的參數
+            crop_req = crop_data[sel_crop]
+            sat_point = crop_req['sat']
+            comp_point = crop_req['comp']
+            target_dli = crop_req.get('dli', 15) # 預留欄位，若沒有則預設15
             
-            st.markdown(f"##### 🥬 {env_mode} - 每日 DLI (日累積光量)")
-            fig_dli = go.Figure()
-            fig_dli.add_trace(go.Bar(x=df_daily['Date'], y=df_daily['DLI_Total'] if 'DLI_Total' in df_daily else df_daily['Val_DLI_Hr'], marker_color='#10b981', name='DLI'))
-            fig_dli.add_hline(y=12, line_dash="dot", annotation_text="低標 (12)", annotation_position="top right")
-            fig_dli.update_layout(height=280, template="plotly_dark", yaxis_title="mol/m²/day", margin=dict(l=40, r=40, t=30, b=10))
-            st.plotly_chart(fig_dli, use_container_width=True)
+            st.info(f"📋 **{sel_crop}** 參數：\n"
+                    f"• 光補償點: `{comp_point}` μmol\n"
+                    f"• 光飽和點: `{sat_point}` μmol\n"
+                    f"• 目標 DLI: `{target_dli}` mol")
+            
+            st.markdown("---")
+            env_mode = st.radio("環境設定", ["室外 (Outdoor)", "室內 (Indoor)"], horizontal=True)
+            trans_rate = 100
+            if env_mode == "室內 (Indoor)":
+                trans_rate = st.slider("透光率 (%)", 10, 100, 50, step=5)
 
-        # --- [圖表 B] 小時熱力圖 ---
-        st.markdown(f"##### 🔥 {metric} - 全年時段指紋圖")
-        heatmap_data = df_adv.pivot_table(index='Date', columns='Hour', values=target_col, aggfunc='mean')
+        # 3. 呼叫後端運算 (取得 12x24 矩陣)
+        matrix, dli_monthly = climate_svc.calculate_monthly_light_matrix(target_filename, transmittance_percent=trans_rate)
         
-        fig_heat = go.Figure(data=go.Heatmap(
-            z=heatmap_data.values, x=heatmap_data.columns, y=heatmap_data.index,
-            colorscale=curr_cfg["color"], colorbar=dict(title=unit),
-            hovertemplate='日期: %{y}<br>時間: %{x}:00<br>數值: %{z:.1f} ' + unit + '<extra></extra>'
-        ))
-        fig_heat.update_layout(height=500, template="plotly_dark", xaxis=dict(title="時間", dtick=2), yaxis=dict(autorange='reversed'))
-        st.plotly_chart(fig_heat, use_container_width=True)
+        if matrix is not None:
+            with c_set2:
+                # --- [圖表 1] 月平均 DLI (Bar Chart) ---
+                st.markdown("#### 📊 平均 DLI (日累積光量)")
+                fig_dli = go.Figure(go.Bar(
+                    x=dli_monthly.index, # 1-12月
+                    y=dli_monthly.values,
+                    marker_color='#10b981',
+                    text=[f"{v:.1f}" for v in dli_monthly.values],
+                    textposition='auto',
+                    name='DLI'
+                ))
+                fig_dli.update_layout(
+                    height=200, 
+                    template="plotly_dark", 
+                    margin=dict(l=20, r=20, t=20, b=10),
+                    xaxis=dict(tickmode='linear', title="月份"),
+                    yaxis=dict(title="mol/m²/day")
+                )
+                st.plotly_chart(fig_dli, use_container_width=True)
 
+            # --- [圖表 2] 三色警示熱力圖 (Custom Heatmap) ---
+            st.markdown("#### 🔥 全年光照適性指紋圖 (Month x Hour)")
+            st.caption(f"🎨 顏色說明：⬜ 灰色 < {comp_point} (無效) | 🟨 米黃色 (適當生長) | 🟥 紅色 > {sat_point} (過量/飽和)")
+            
+            # 準備熱力圖數據
+            # 為了實現「三色」，我們需要建立一個「類別矩陣」(0, 1, 2) 來控制顏色
+            # 但同時又要顯示「真實數值」在滑鼠提示上
+            
+            z_values = matrix.values # 真實數值 (PPFD)
+            
+            # 建立顏色分類矩陣
+            # 0: < Comp (灰)
+            # 1: Comp ~ Sat (米黃)
+            # 2: > Sat (紅)
+            z_category = np.zeros_like(z_values)
+            z_category[(z_values >= comp_point) & (z_values <= sat_point)] = 1
+            z_category[z_values > sat_point] = 2
+            
+            # 定義三色盤 (Discrete Colorscale)
+            # 0->0.33: Grey, 0.33->0.66: Beige, 0.66->1: Red
+            custom_colors = [
+                [0.0, '#d1d5db'],   # Grey (Light)
+                [0.33, '#d1d5db'],
+                [0.33, '#fef3c7'],  # Beige (Warm Yellow)
+                [0.66, '#fef3c7'],
+                [0.66, '#ef4444'],  # Red
+                [1.0, '#ef4444']
+            ]
+            
+            # 使用 heatmap 繪圖
+            # Trick: 我們用 z_category 來決定顏色，但用 customdata 來存真實數值顯示在 tooltip
+            fig_heat = go.Figure(data=go.Heatmap(
+                z=z_category,
+                x=matrix.columns, # 0-23 Hour
+                y=matrix.index,   # 1-12 Month
+                colorscale=custom_colors,
+                showscale=False,  # 不顯示色條，因為是離散的
+                customdata=z_values,
+                hovertemplate='<b>%{y}月 %{x}點</b><br>平均 PPFD: %{customdata:.0f} μmol<br>狀態: %{z}<extra></extra>'
+            ))
+            
+            fig_heat.update_layout(
+                height=400,
+                template="plotly_dark",
+                xaxis=dict(title="時間 (Hour)", tickmode='linear', dtick=2),
+                yaxis=dict(title="月份", tickmode='linear', dtick=1, autorange='reversed'), # 1月在最上
+                margin=dict(l=50, r=50, t=20, b=20)
+            )
+            st.plotly_chart(fig_heat, use_container_width=True)
+            
+        else:
+            st.warning("數據運算失敗，請檢查檔案格式。")
+            
     else:
-        st.warning(f"無法分析光環境，請確認 `{target_csv}` 是否存在於 data 資料夾。")
+        st.warning(f"⚠️ 尚未上傳 **{CURR_LOC['name']}** 的原始氣象 CSV。")
 
 # --- Tab 2: 室內氣候 ---
 with tab2:

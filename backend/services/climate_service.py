@@ -67,6 +67,54 @@ class ClimateService:
             print(f"❌ 光環境分析發生錯誤: {e}")
             return None
         
+    def get_crop_light_requirements(self):
+        """
+        讀取作物光環境參數 (優先讀取 CSV，若無則使用預設值)
+        未來的擴充性：只要 CSV 增加欄位，這裡讀取後也會自動包含在回傳的 dict 中
+        """
+        # 1. 定義標準檔案路徑
+        csv_path = os.path.join('data', 'crop_parameters.csv')
+        
+        # 2. 定義預設值 (Fallback) - 當您還沒建立 CSV 時會用這些值
+        default_crops = {
+            '萵苣 (預設)': {'sat': 1100, 'comp': 40, 'dli': 14},
+            '小白菜 (預設)': {'sat': 1200, 'comp': 40, 'dli': 16}
+        }
+
+        # 3. 嘗試讀取 CSV
+        if os.path.exists(csv_path):
+            try:
+                # 讀取 CSV
+                df = pd.read_csv(csv_path, encoding='utf-8')
+                
+                # 建立回傳字典
+                crop_dict = {}
+                
+                for _, row in df.iterrows():
+                    # 抓取顯示名稱 (若無 Name 欄位則用 ID)
+                    name = str(row.get('Crop_Name', row.get('Crop_ID', 'Unknown')))
+                    
+                    # 建立參數包 (這裡預留了擴充空間，未來有新欄位直接加進去即可)
+                    crop_dict[name] = {
+                        'sat': float(row.get('Light_Sat_Point', 1200)),  # 光飽和點
+                        'comp': float(row.get('Light_Comp_Point', 40)),  # 光補償點
+                        
+                        # --- 以下為預留擴充欄位 ---
+                        'dli': float(row.get('DLI_Target', 15)),         # DLI 目標
+                        'temp_min': float(row.get('Temp_Min', 10)),      # 最低溫
+                        'temp_max': float(row.get('Temp_Max', 35))       # 最高溫
+                    }
+                
+                print(f"✅ 已載入 {len(crop_dict)} 種作物參數")
+                return crop_dict
+                
+            except Exception as e:
+                print(f"⚠️ 讀取 crop_parameters.csv 失敗: {e}，將使用預設值。")
+                return default_crops
+        else:
+            print("ℹ️ 尚未建立 crop_parameters.csv，使用內建預設值。")
+            return default_crops
+        
     def scan_and_load_weather_data(self):
         """
         [完整邏輯補完] 讀取氣象資料並計算月統計數據 (Tab 1 專用)
